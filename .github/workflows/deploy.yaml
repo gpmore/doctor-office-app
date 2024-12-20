@@ -110,7 +110,7 @@ jobs:
           export CLUSTER_VPC=$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.resourcesVpcConfig.vpcId" --output text)
           helm repo add eks https://aws.github.io/eks-charts
           helm repo update eks
-          helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+          helm install aws-load-balancer-controller eks/aws-load-balancer-controller 
             --namespace kube-system \
             --set clusterName=$CLUSTER_NAME \
             --set serviceAccount.create=false \
@@ -131,6 +131,54 @@ jobs:
             --addon-name amazon-cloudwatch-observability \
             --cluster-name docktor-app-cluster \
             --service-account-role-arn arn:aws:iam::619715105204:role/aws-cloudwatch-agent
+          
+          echo "Adding Prometheus and Grafana Helm Repo"
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          
+          echo "Installing Prometheus..."
+          kubectl create namespace prometheus
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm install prometheus prometheus-community/prometheus \
+            --namespace prometheus \
+            --set alertmanager.persistentVolume.storageClass="gp2" \
+            --set server.persistentVolume.storageClass="gp2"
+          
+          echo "Checking Prometheus Deployment..."
+          kubectl get all -n prometheus
+
+          echo "Setting up Grafana..."
+          mkdir -p ${HOME}/environment/grafana
+
+          cat << EoF > ${HOME}/environment/grafana/grafana.yaml
+          datasources:
+            datasources.yaml:
+              apiVersion: 1
+              datasources:
+              - name: Prometheus
+                type: prometheus
+                url: http://prometheus-server.prometheus.svc.cluster.local
+                access: proxy
+                isDefault: true
+          EoF
+
+          kubectl create namespace grafana
+
+          helm install grafana grafana/grafana \
+            --namespace grafana \
+            --set persistence.storageClassName="gp2" \
+            --set persistence.enabled=true \
+            --set adminPassword='${{ secrets.GRAFANA_ADMIN_PASSWORD }}' \
+            --values ${HOME}/environment/grafana/grafana.yaml \
+            --set service.type=LoadBalancer
+          
+          echo "Checking Grafana Deployment..."
+          kubectl get all -n grafana
+    
+          export ELB=$(kubectl get svc -n grafana grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "Grafana is accessible at: http://$ELB"
+          echo "When logging in, use the username admin and the following password:"
+          kubectl get secret --namespace grafana grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
         continue-on-error: false
 
   prod-k8s-deploy:

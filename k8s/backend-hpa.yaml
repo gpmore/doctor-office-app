@@ -17,6 +17,18 @@ spec:
       target:
         type: Utilization
         averageUtilization: 50  # CPU usage threshold
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: External
+    external:
+      metricName: http_requests_per_second
+      target:
+        type: Value
+        value: 100
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 60

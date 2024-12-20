@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: 619715105204.dkr.ecr.us-east-1.amazonaws.com/docktor-app/doctor-office-frontend:v1
+        image: 358051303549.dkr.ecr.us-east-1.amazonaws.com/docktor-app/doctor-office-frontend:latest
         resources:  # Set resource requests and limits for stable performance and HPA support.
           requests:
             cpu: "100m"   # min CPU requests
@@ -24,8 +24,18 @@ spec:
             memory: "512Mi"  # max memory requests
         ports:
         - containerPort: 3001
-#      imagePullSecrets:
-#      - name: myregistry-secret
+        readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 15
+        livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
@@ -38,4 +48,4 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 3001
-  # type: LoadBalancer
+

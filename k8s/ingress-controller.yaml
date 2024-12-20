@@ -14,7 +14,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - #host: doctorapp-group3enpm818r.site
+    - host: doctorapp-group3enpm818r.site
       http:
         paths:
           - path: /

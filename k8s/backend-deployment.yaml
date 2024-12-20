@@ -14,22 +14,34 @@ spec:
     spec:
       containers:
       - name: backend
-        image: 619715105204.dkr.ecr.us-east-1.amazonaws.com/docktor-app/doctor-office-backend:stateful
-        resources:  # Set resource requests and limits for stable performance and HPA support.
+        image: 358051303549.dkr.ecr.us-east-1.amazonaws.com/docktor-app/doctor-office-backend:latest
+        resources:              # Set resource requests and limits for stable performance and HPA support.
           requests:
-            cpu: "100m"   # min CPU requests
-            memory: "256Mi"  # min memory requests
+            cpu: "100m"         # min CPU requests
+            memory: "256Mi"     # min memory requests
           limits:
-            cpu: "200m"   # max CPU requests
-            memory: "512Mi"  # max memory requests
+            cpu: "200m"         # max CPU requests
+            memory: "512Mi"     # max memory requests
         ports:
         - containerPort: 3000
+        readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+        livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
         env:
         - name: MONGODB_URL
-          value: "mongo-0.mongo.default.svc.cluster.local,mongo-1.mongo.default.svc.cluster.local,mongo-2.mongo.default.svc.cluster.local:27017" #"mongo-service.default.svc.cluster.local:27017"  
-#      imagePullSecrets:
-#      - name: myregistry-secret
-
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secrets
+              key: mongo-uri
 ---
 apiVersion: v1
 kind: Service
@@ -42,4 +54,3 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-  # type: LoadBalancer
